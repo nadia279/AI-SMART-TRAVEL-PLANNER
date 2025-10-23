@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AI Smart Travel Planner — Advanced Budget Planner</title>
+  <meta name="description" content="Advanced front-end demo of AI Smart Travel Planner: interactive budget calculator, day-by-day itinerary, cost breakdown chart, save/export plans.">
+  <!-- External libraries (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <style>
+    :root{
+      --accent:#0b69ff; --accent-2:#0d54d6; --accent-3:#06b6d4; --bg:#f3f7ff; --card:#fff; --muted:#6b7280; --maxw:1150px;
+      --glass: rgba(255,255,255,0.7);
+      --soft-shadow: 0 8px 30px rgba(12,40,80,0.06);
+      --accent-glow: 0 10px 30px rgba(11,105,255,0.12);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{font-family:Inter, system-ui, -apple-system,'Segoe UI',Roboto,Arial; margin:0; background:linear-gradient(180deg,var(--bg),#fff); color:#0b1b2b; -webkit-font-smoothing:antialiased}
+    .wrap{max-width:var(--maxw);margin:24px auto;padding:20px}
+
+    header{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;box-shadow:var(--accent-glow)}
+    .logo{width:56px;height:56px;border-radius:12px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+    .brand-mark{display:flex;align-items:center;gap:10px}
+    h1{margin:0;font-size:20px}
+    header p{margin:0;opacity:0.95;font-size:13px}
+
+    .grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:18px}
+    @media(min-width:980px){.grid{grid-template-columns:360px 1fr}}
+
+    .panel{background:var(--card);border-radius:12px;padding:16px;box-shadow:var(--soft-shadow)}
+    .panel h2{margin:0 0 8px 0}
+    label{display:block;font-weight:700;color:#1f2937;margin-top:10px;font-size:13px}
+    input,select,textarea{width:100%;padding:10px 12px;margin-top:6px;border:1px solid #e6eefc;border-radius:10px;font-size:14px}
+    .row{display:flex;gap:10px}
+    .row > *{flex:1}
+    button{background:var(--accent);color:#fff;padding:10px 12px;border-radius:10px;border:0;font-weight:700;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease}
+    button:hover{transform:translateY(-3px);box-shadow:var(--accent-glow)}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* results */
+    .results-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .plan-list{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+
+    .plan-card{border:1px solid #eef4ff;padding:12px;border-radius:10px;background:linear-gradient(180deg,#ffffff,#fbfdff);transition:transform .12s ease, box-shadow .12s ease}
+    .plan-card:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(13,42,110,0.08)}
+    .plan-meta{font-size:13px;color:var(--muted)}
+    .split{display:grid;grid-template-columns:1fr 260px;gap:12px}
+    @media(max-width:980px){.split{grid-template-columns:1fr}}
+
+    /* small controls */
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .chip{background:#f1f5ff;padding:6px 10px;border-radius:999px;font-weight:700;border:1px solid rgba(11,105,255,0.06);cursor:pointer}
+
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+
+    /* micro interactions */
+    .hint{font-size:12px;color:var(--muted)}
+    .kpi{display:flex;gap:10px;align-items:center}
+    .kpi > div{background:linear-gradient(180deg,#fff,#fbfdff);padding:10px;border-radius:8px;box-shadow:0 6px 18px rgba(12,40,80,0.04);min-width:120px}
+
+    .actions{display:flex;gap:8px}
+
+    /* icons */
+    .icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;margin-right:8px}
+    .icon--air{background:linear-gradient(90deg,#ffecd2,#fcb69f); color:#7a3e1f}
+    .icon--train{background:linear-gradient(90deg,#dff6ff,#bfeafe); color:#0b6b77}
+    .icon--bus{background:linear-gradient(90deg,#e9ffd6,#baf2a3); color:#3a7a1a}
+
+    .pref-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .pref{display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:#fbfdff;border:1px solid #eef6ff;cursor:pointer}
+    .pref input{display:none}
+
+    /* accessibility focus */
+    :focus{outline:3px solid rgba(11,105,255,0.12);outline-offset:3px}
+
+    /* tiny animations */
+    .fade-in{animation:fadeIn .36s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+    /* responsive small tweak */
+    @media(max-width:520px){ header{padding:12px} .logo{width:48px;height:48px} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header role="banner" aria-label="AI Smart Travel Planner header">
+      <div class="logo" aria-hidden="true">AI</div>
+      <div class="brand-mark">
+        <div>
+          <h1>AI Smart Travel Planner</h1>
+          <p class="muted" id="tagline">Tell your budget — we’ll plan the journey.</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid" role="main">
+      <!-- LEFT: Controls -->
+      <section class="panel" aria-labelledby="planHeading">
+        <h2 id="planHeading">Create / Adjust Plan</h2>
+
+        <form id="planForm" novalidate>
+          <label for="from">From</label>
+          <input id="from" name="from" placeholder="Starting city (e.g., Lahore)" required>
+
+          <label for="to">To</label>
+          <input id="to" name="to" placeholder="Destination city (e.g., Karachi)" required>
+
+          <div class="row">
+            <div>
+              <label for="startDate">Start</label>
+              <input id="startDate" name="startDate" type="date" aria-label="start date">
+            </div>
+            <div>
+              <label for="endDate">End</label>
+              <input id="endDate" name="endDate" type="date" aria-label="end date">
+            </div>
+          </div>
+
+          <label for="budget">Budget (PKR)</label>
+          <input id="budget" name="budget" type="number" min="0" placeholder="e.g. 60000" required>
+
+          <label for="preference">Transport Preference</label>
+          <div class="pref-row" role="radiogroup" aria-label="transport preference options">
+            <label class="pref"><input type="radio" name="pref" value="any" checked onchange="syncPref('any')"> <span class="icon">🟢</span>Any</label>
+            <label class="pref"><input type="radio" name="pref" value="train" onchange="syncPref('train')"> <span class="icon icon--train">🚆</span>Train</label>
+            <label class="pref"><input type="radio" name="pref" value="bus" onchange="syncPref('bus')"> <span class="icon icon--bus">🚌</span>Bus</label>
+            <label class="pref"><input type="radio" name="pref" value="air" onchange="syncPref('air')"> <span class="icon icon--air">✈️</span>Air</label>
+          </div>
+
+          <label class="hint">Adjust per-item estimates (affects cost breakdown)</label>
+          <div class="row">
+            <div>
+              <label for="hotelPerNight">Hotel / night (PKR)</label>
+              <input id="hotelPerNight" type="number" min="0" value="4000">
+            </div>
+            <div>
+              <label for="foodPerDay">Food / day (PKR)</label>
+              <input id="foodPerDay" type="number" min="0" value="1200">
+            </div>
+          </div>
+
+          <div class="controls">
+            <button id="generate">Generate Plans</button>
+            <button type="button" id="savePlan" class="" style="background:#fff;color:var(--accent);border:1px solid #eef4ff">Save Plan</button>
+            <button type="button" id="exportJson" class="" style="background:#fff;color:var(--accent);border:1px solid #eef4ff">Export JSON</button>
+            <button type="button" id="loadSample" class="chip">Load Sample</button>
+          </div>
+
+          <div style="margin-top:8px" class="muted">Tip: Select a transport icon to indicate preference; results will show matching transit icons.</div>
+        </form>
+
+        <hr style="margin:12px 0;border:none;border-top:1px dashed #eef4ff">
+        <div>
+          <h3 style="margin:0 0 6px 0">Saved Plans</h3>
+          <div id="savedList" class="muted">(no saved plans)</div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Results & charts -->
+      <section>
+        <div class="panel split fade-in" aria-live="polite">
+          <div>
+            <div class="results-header">
+              <div>
+                <h2 id="resultsTitle">Suggested Plans</h2>
+                <div class="muted" id="resultsSub">Totals, breakdown and itinerary</div>
+              </div>
+              <div class="kpi">
+                <div><div class="muted">Budget</div><div id="kBudget">—</div></div>
+                <div><div class="muted">Best-fit</div><div id="kBest">—</div></div>
+              </div>
+            </div>
+
+            <div id="plansContainer" class="plan-list" aria-live="polite"></div>
+
+          </div>
+
+          <aside style="padding-left:8px">
+            <div style="position:relative">
+              <canvas id="breakdownChart" width="400" height="300" aria-label="cost breakdown chart"></canvas>
+            </div>
+            <div style="margin-top:12px">
+              <h4 style="margin:4px 0">Day-by-day Itinerary</h4>
+              <div id="itinerary" class="muted">Generate a plan to see a day-by-day suggestion.</div>
+            </div>
+          </aside>
+        </div>
+
+        <div style="margin-top:12px" class="panel">
+          <h3 style="margin-top:0">Plan Actions</h3>
+          <div class="actions" style="margin-top:8px">
+            <button id="printPlan" type="button">Print / Save PDF</button>
+            <button id="clearSaved" type="button" style="background:#fff;color:var(--accent);border:1px solid #eef4ff">Clear Saved</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>© 2025 AI Smart Travel Planner — Demo only (no real bookings)</footer>
+  </div>
+
+  <script>
+    // Advanced front-end logic
+    // Utility helpers
+    const $ = id => document.getElementById(id);
+    const toNum = v => Number(v) || 0;
+
+    // internal transport preference sync (radio -> hidden select field)
+    function syncPref(val){
+      // set a hidden preference input for legacy code
+      window._pref = val;
+    }
+    // default
+    window._pref = 'any';
+
+    const sample = {from:'Lahore', to:'Karachi', startDate:'2025-12-25', endDate:'2025-12-29', budget:60000, preference:'train', hotelPerNight:4000, foodPerDay:1200};
+
+    $('loadSample').addEventListener('click', () => {
+      Object.entries(sample).forEach(([k,v])=>{ if($(k)) $(k).value = v });
+      // set radio
+      document.querySelectorAll('input[name="pref"]').forEach(r=>r.checked = (r.value===sample.preference));
+      syncPref(sample.preference);
+      showToast('Sample loaded — Tell your budget, we plan the journey');
+    });
+
+    // Simple toast (non-blocking)
+    function showToast(msg){
+      const t = document.createElement('div');
+      t.textContent = msg; t.style.position='fixed'; t.style.bottom='22px'; t.style.right='22px'; t.style.padding='10px 14px'; t.style.background='rgba(11,105,255,0.96)'; t.style.color='#fff'; t.style.borderRadius='8px'; t.style.boxShadow='0 8px 20px rgba(11,105,255,0.12)'; t.style.zIndex=9999; document.body.appendChild(t);
+      setTimeout(()=>{ t.style.transition='opacity .3s'; t.style.opacity=0; setTimeout(()=>t.remove(),300) }, 1800);
+    }
+
+    // Planner logic — deterministic but richer than original
+    function calcPlans(form){
+      const sd = form.startDate ? new Date(form.startDate) : null;
+      const ed = form.endDate ? new Date(form.endDate) : null;
+      const days = (sd && ed) ? Math.max(1, Math.round((ed - sd)/(1000*60*60*24)) + 1) : 3;
+
+      // transit base by preference
+      const pref = form.preference || 'any';
+      const baseTransit = pref === 'air' ? 18000 : pref === 'train' ? 8500 : pref === 'bus' ? 6000 : 9000;
+      const altTransit = pref === 'air' ? 25000 : pref === 'train' ? 12000 : 9000;
+
+      const hotelPerNight = toNum(form.hotelPerNight) || 4000;
+      const foodPerDay = toNum(form.foodPerDay) || 1200;
+      const activities = 6000;
+
+      const tiers = [
+        {title:'Economy Plan', transit:altTransit, icon:'🚌', accom:hotelPerNight*days*0.75, food:foodPerDay*days*0.9, act:activities*0.5, notes:'Cheaper stays, use local transport.'},
+        {title:'Standard Plan', transit:baseTransit, icon: pref==='air'? '✈️' : pref==='train'? '🚆' : '🚌', accom:hotelPerNight*days, food:foodPerDay*days, act:activities, notes:'Balanced comfort and savings.'},
+        {title:'Comfort Plan', transit:baseTransit*1.4, icon: pref==='air'? '✈️' : '🚆', accom:hotelPerNight*days*1.4, food:foodPerDay*days*1.3, act:activities*1.2, notes:'More comfortable hotels and flexibility.'}
+      ];
+
+      return tiers.map(t => {
+        const total = Math.round(t.transit + t.accom + t.food + t.act);
+        return {...t, days, total};
+      });
+    }
+
+    // Render functions
+    function renderPlans(form, plans){
+      const container = $('plansContainer'); container.innerHTML='';
+      $('resultsTitle').textContent = `Suggested Plans for ${form.from} → ${form.to}`;
+      $('resultsSub').textContent = `${form.startDate || 'dates N/A'} • ${form.endDate || 'dates N/A'} • ${plans[0].days} day(s)`;
+      $('kBudget').textContent = form.budget ? 'PKR ' + form.budget.toLocaleString() : '—';
+
+      plans.forEach(p => {
+        const left = form.budget - p.total;
+        const el = document.createElement('div'); el.className='plan-card';
+        el.innerHTML = `
+          <div class="plan-meta">${form.from} → ${form.to} • ${form.startDate || 'dates N/A'} • ${p.days} day(s)</div>
+          <h4 style="margin:6px 0">${p.title} <span style="font-size:18px;margin-left:8px">${p.icon}</span> — <span style="color:var(--accent)">PKR ${p.total.toLocaleString()}</span></h4>
+          <div class="plan-meta">Preference: ${form.preference || 'any'} • ${left>=0? 'Left: PKR '+left.toLocaleString() : 'Over by PKR '+Math.abs(left).toLocaleString()}</div>
+          <ul>
+            <li>Transit: PKR ${Math.round(p.transit).toLocaleString()}</li>
+            <li>Accommodation: PKR ${Math.round(p.accom).toLocaleString()}</li>
+            <li>Food: PKR ${Math.round(p.food).toLocaleString()}</li>
+            <li>Activities: PKR ${Math.round(p.act).toLocaleString()}</li>
+          </ul>
+          <p style="margin:6px 0;color:#374151">${p.notes}</p>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="useBtn">Load Itinerary</button>
+            <button class="exportBtn" style="background:#fff;color:var(--accent);border:1px solid #eef4ff">Export</button>
+          </div>
+        `;
+        // actions
+        el.querySelector('.useBtn').addEventListener('click', ()=>{ populateItinerary(form,p); showToast('Plan loaded to itinerary') });
+        el.querySelector('.exportBtn').addEventListener('click', ()=>{ downloadJSON({form,plan:p}, `${p.title.replaceAll(' ','_')}.json`) });
+        container.appendChild(el);
+      });
+
+      // pick best-fit for KPIs (closest under budget or lowest overage)
+      const best = chooseBest(plans, form.budget);
+      $('kBest').textContent = best ? best.title + ' • PKR ' + best.total.toLocaleString() : '—';
+
+      // update chart with first plan by default
+      updateChart(plans[0]);
+      populateItinerary(form, plans[0]);
+    }
+
+    function chooseBest(plans,budget){
+      if(!budget) return plans[0];
+      const under = plans.filter(p=>p.total<=budget);
+      if(under.length) return under.reduce((a,b)=>a.total>b.total?a:b);
+      return plans.reduce((a,b)=>Math.abs(a.total-budget) < Math.abs(b.total-budget) ? a:b);
+    }
+
+    // Chart.js breakdown
+    let chart = null;
+    function updateChart(plan){
+      const ctx = $('breakdownChart').getContext('2d');
+      const data = [plan.transit, plan.accom, plan.food, plan.act];
+      const labels = ['Transit','Accommodation','Food','Activities'];
+      if(chart) { chart.data.datasets[0].data = data; chart.update(); return }
+      chart = new Chart(ctx, {
+        type: 'doughnut', data:{labels,datasets:[{data, backgroundColor:['#0b69ff','#06b6d4','#ffd166','#9be7a7']}]}, options:{plugins:{legend:{position:'bottom'}}, cutout: '40%'}
+      });
+    }
+
+    // Itinerary generator (simple mock)
+    function populateItinerary(form,plan){
+      const sd = form.startDate ? new Date(form.startDate) : null;
+      const days = plan.days;
+      const it = [];
+      for(let i=0;i<days;i++){
+        const date = sd ? new Date(sd.getTime() + i*24*60*60*1000) : null;
+        it.push({day:i+1, date: date ? date.toISOString().slice(0,10) : `Day ${i+1}`, summary: generateDaySummary(i,days,form.preference)});
+      }
+      renderItinerary(it);
+    }
+    function generateDaySummary(i,days,pref){
+      if(i===0) return `Arrival & settle in — preferred transit: ${pref || 'any'}.`;
+      if(i===days-1) return 'Pack up and return to origin.';
+      return 'Explore: local markets, recommended eatery, and a short activity or museum.';
+    }
+    function renderItinerary(items){
+      const out = $('itinerary'); out.innerHTML='';
+      items.forEach(it=>{
+        const d = document.createElement('div'); d.className='muted'; d.style.marginBottom='6px'; d.innerHTML = `<strong>Day ${it.day}</strong> ${it.date ? '• '+it.date : ''} — ${it.summary}`; out.appendChild(d);
+      });
+    }
+
+    // Save / load to localStorage
+    function savedKey(){ return 'ai_travel_saved_v2' }
+    function getSaved(){ try{ return JSON.parse(localStorage.getItem(savedKey())||'[]') }catch(e){return[]} }
+    function setSaved(list){ localStorage.setItem(savedKey(), JSON.stringify(list)); renderSaved() }
+    function renderSaved(){ const list = getSaved(); const el = $('savedList'); if(!list.length){ el.textContent='(no saved plans)'; return } el.innerHTML=''; list.forEach((s,idx)=>{ const d = document.createElement('div'); d.className='muted'; d.style.marginBottom='6px'; d.innerHTML = `<strong>${s.form.from}→${s.form.to}</strong> • ${s.plan.title} • PKR ${s.plan.total.toLocaleString()} <button data-idx='${idx}' style='margin-left:8px'>Load</button> <button data-idx='${idx}' style='margin-left:6px;background:#fff;color:var(--accent);border:1px solid #eef4ff'>Export</button>`; el.appendChild(d);
+        d.querySelectorAll('button')[0].addEventListener('click',()=>{ populateItinerary(s.form,s.plan); showToast('Saved plan loaded') });
+        d.querySelectorAll('button')[1].addEventListener('click',()=>{ downloadJSON(s, `saved_plan_${idx+1}.json`) });
+      }) }
+
+    $('savePlan').addEventListener('click', ()=>{
+      const form = readForm(); const plans = calcPlans(form); const best = chooseBest(plans, form.budget);
+      const list = getSaved(); list.push({form, plan:best, savedAt: new Date().toISOString()}); setSaved(list); showToast('Plan saved locally')
+    });
+
+    $('clearSaved').addEventListener('click', ()=>{ if(confirm('Clear all saved plans?')){ localStorage.removeItem(savedKey()); renderSaved(); showToast('Saved cleared') } });
+
+    $('exportJson').addEventListener('click', ()=>{ const form = readForm(); const plans = calcPlans(form); downloadJSON({form,plans}, 'plans_export.json') });
+
+    function downloadJSON(obj, filename){ const blob = new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+
+    // Print handler
+    $('printPlan').addEventListener('click', ()=>{ window.print(); });
+
+    // Read form
+    function readForm(){ return {
+      from: $('from').value || '—', to: $('to').value || '—', startDate: $('startDate').value, endDate: $('endDate').value,
+      budget: toNum($('budget').value), preference: (window._pref || 'any'),
+      hotelPerNight: toNum($('hotelPerNight').value), foodPerDay: toNum($('foodPerDay').value)
+    } }
+
+    // Generate
+    $('generate').addEventListener('click', (e)=>{ e.preventDefault(); const form = readForm(); const plans = calcPlans(form); renderPlans(form,plans); showToast('Plans generated — Tell your budget, we plan the journey') });
+
+    // init
+    renderSaved();
+  </script>
+</body>
+</html>
